@@ -1,92 +1,206 @@
 # Playwright Test Framework
 
-A TypeScript Playwright framework for UI and API testing.
+[![Playwright Tests](https://github.com/kannangk1990/playwrightwithTS/actions/workflows/playwright.yml/badge.svg)](https://github.com/kannangk1990/playwrightwithTS/actions)
 
-Includes page objects, reusable fixtures, API clients, authentication state, cross-browser tests, environment settings, Allure reports, CI checks, linting, and formatting.
+A TypeScript Playwright framework for UI and API testing with production-grade patterns: page object modeling, fixture-based dependency injection, cross-browser execution, and automated CI/CD.
 
-This is a small production-style framework built against [Sauce Demo](https://www.saucedemo.com/). It demonstrates page object modeling, fixture-based dependency injection, environment configuration, test isolation, and Allure reporting without hiding the important Playwright concepts.
+Built against [Sauce Demo](https://www.saucedemo.com/) to demonstrate real-world testing architecture and best practices.
 
-## Project shape
+## Quick Start
 
-```text
+```bash
+npm install
+npm test                    # Run all tests (Chromium, Firefox, WebKit)
+npm run test:chromium       # Fast local feedback
+npm run test:headed         # Watch the browser
+npm run test:debug          # Playwright Inspector
+npm run typecheck           # TypeScript validation
+npm run report:allure       # View Allure test report
+```
+
+## What's Inside
+
+### Architecture
+
+This framework demonstrates **production-grade patterns**:
+
+- **Page Object Model (POM)**: Encapsulates UI locators and business actions per screen
+- **Component Object Model (COM)**: Reusable widget compositions for repeated UI patterns
+- **Fixture-based Dependency Injection**: Tests request ready-to-use fixtures rather than managing setup
+- **Environment Configuration**: Credentials and URLs managed externally, not hardcoded
+- **Cross-browser Testing**: Runs on Chromium, Firefox, and WebKit in parallel
+- **Authentication State**: Reuses authenticated session across tests via Playwright's `storageState`
+- **Allure Reporting**: Rich visual reports with steps, attachments, and failure diagnostics
+
+### Project Structure
+
+```
 src/
-  components/ Reusable widgets composed inside pages (COM)
-  data/       Test identities and environment overrides
-  fixtures/   The composition root: creates and injects page objects
-  api/        Reusable API request client
-  pages/      UI behavior and locators, never test assertions about journeys
-tests/        Business-readable scenarios composed from fixtures
+  api/        Reusable HTTP client for API testing
+  components/ Reusable widget object models (HeaderComponent, etc.)
+  data/       Test identities, fixtures, and environment overrides
+  fixtures/   Composition root: creates and injects page objects
+  pages/      Page object models for screens (LoginPage, InventoryPage, etc.)
+  
+tests/        Business-readable test scenarios using fixtures
+
+.github/
+  workflows/  CI/CD pipeline (playwright.yml)
+  agents/     VS Code Copilot agents for test generation and healing
+  prompts/    Reusable prompts for test planning and automation
 ```
 
-The dependency flow is:
+### Dependency Injection Pattern
+
+Tests request high-level capabilities; fixtures handle composition:
 
 ```text
-test -> authenticatedInventoryPage -> loginPage + inventoryPage -> headerComponent -> page
-test -> cartPage -> page
-test -> checkoutPage -> page
+test
+├─ authenticatedInventoryPage (fixture)
+│  ├─ loginPage (via page fixture)
+│  ├─ inventoryPage (via page fixture)
+│  └─ headerComponent (composed inside inventoryPage)
+└─ page (Playwright base fixture)
 ```
 
-`authenticatedInventoryPage` is the DI example. A test asks for a ready-to-use capability; the fixture handles navigation, login, and the page readiness check. Each test still receives a fresh Playwright `page`, so browser state remains isolated.
+A test writes: `test('find product', async ({ authenticatedInventoryPage }) => { ... })`
 
-## POM and COM
+The fixture orchestrates: navigate → login → verify readiness → return page object.
 
-Use a **Page Object Model** class for a route or screen, such as `InventoryPage`. Use a **Component Object Model** class for a reusable widget, such as `HeaderComponent` or `ProductCardComponent`. Components accept either the shared `Page` or a scoped `Locator`, which lets the same component be safely reused on multiple screens without leaking selectors into tests.
-
-The fixture creates `HeaderComponent` once per test and injects it into `InventoryPage`. `InventoryPage` creates a scoped `ProductCardComponent` for the selected product. This is composition: pages describe screens, components describe widgets, and tests describe business intent.
+Each test gets a fresh browser context; no global state.
 
 ## Commands
 
 ```bash
-npm test                  # Chromium, Firefox, and WebKit
-npm run test:chromium     # Fast local feedback
-npm run test:headed       # Watch the browser
-npm run test:debug        # Playwright Inspector
-npm run test:api           # API smoke tests
-npm run typecheck          # TypeScript validation
-npm run report:html       # Open the Playwright HTML report
-npm run report:allure     # Build and open the Allure report
+# Local Testing
+npm test                  # All browsers, all tests
+npm run test:chromium     # Chromium only (fastest)
+npm run test:headed       # Headed mode (see the browser)
+npm run test:debug        # Playwright Inspector (step through)
+npm run test:api          # API smoke tests only
+npm run test:smoke        # @smoke tagged tests
+npm run test:ui           # @ui tagged tests
+npm run test:regression   # @regression tagged tests
+
+# Code Quality
+npm run typecheck         # TypeScript validation
+npm run lint              # ESLint
+npm run format:check      # Prettier (check only)
+npm run format            # Prettier (auto-fix)
+
+# Reporting
+npm run report:html       # Open Playwright HTML report
+npm run report:allure     # Build and open Allure report
 ```
 
-The default credentials are the public Sauce Demo credentials. Override them for another environment without changing source code:
+## Environment Configuration
+
+Override test environment without changing code:
 
 ```bash
-BASE_URL=https://www.saucedemo.com \
+# Run against different URL/credentials
+BASE_URL=https://staging.example.com \
 SAUCE_USERNAME=standard_user \
 SAUCE_PASSWORD=secret_sauce \
 npm run test:chromium
 
-API_BASE_URL=https://your-api.example.com npm run test:api
+# API testing
+API_BASE_URL=https://api.example.com npm run test:api
 ```
 
-## How to extend it
+See `.env.example` for available variables.
 
-1. Add a page class under `src/pages` with role-first locators and business actions.
-2. Add it to `AppFixtures` and initialize it from the shared `page` fixture.
-3. Add domain data under `src/data` rather than embedding credentials in tests.
-4. Compose the scenario in `tests` with `test.step` and Allure labels.
+## CI/CD Pipeline
 
-## Playwright MCP agents
+Tests run automatically on every push and pull request via GitHub Actions:
 
-This workspace includes three focused VS Code custom agents under `.github/agents`:
+- **Trigger**: Push to `main`/`master`, or open a PR
+- **Environment**: Ubuntu Linux, Node 22
+- **Steps**:
+  1. Install dependencies (`npm ci`)
+  2. Install Playwright browsers
+  3. Run TypeScript type checking
+  4. Execute all tests in parallel
+  5. Generate Allure report
+  6. Upload artifacts (test results, videos, traces) for 30 days
+  7. Generate Playwright HTML report
 
-- **Playwright Planner** creates a coverage plan from requirements and existing framework capabilities.
-- **Playwright Generator** implements the approved plan using the existing fixtures, page objects, components, and test data.
-- **Playwright Healer** diagnoses failures from Playwright and Allure artifacts before making evidence-backed repairs.
+**Artifacts preserved on failure**: Video recordings, test traces, and Allure results help diagnose flaky or failing tests without rerunning.
 
-The Playwright MCP server is registered in `.vscode/mcp.json`. VS Code downloads `@playwright/mcp` on demand through `npx`; it provides browser inspection and interaction tools to the agents, while the repository's own Playwright CLI remains responsible for test execution and reporting.
+See `.github/workflows/playwright.yml` for full configuration.
 
-Reusable prompts are available under `.github/prompts` and can be invoked from
-VS Code Chat:
+## How to Extend It
 
-- `/Analyze Ticket` retrieves an ADO or Jira ticket through MCP when available
-  and creates a plan without editing files.
-- `/Generate Tests` implements an approved plan or supplied acceptance criteria.
-- `/Heal Failure` diagnoses a failing test using its error and available
-  Playwright or Allure artifacts before making a focused repair.
+### Adding a New Test
 
-Generator requires approved requirements, and Healer requires a concrete failure
-and evidence. This keeps the Planner -> Generator -> Healer workflow reviewable
-while allowing work to start directly at the appropriate stage.
+```typescript
+// 1. Create page object for new screen
+// src/pages/CheckoutPage.ts
+export class CheckoutPage {
+  constructor(private page: Page) {}
+  
+  async fillShippingAddress(address: string) {
+    await this.page.locator('[data-test="shipping-address"]').fill(address);
+  }
+}
 
-Recommended flow: run **Playwright Planner**, hand off to **Playwright Generator**, then hand off to **Playwright Healer** after the focused test run. Review generated or healed code before merging it.
-The page classes intentionally keep assertions close to the UI they describe, while the test owns the business narrative. This makes failures local and keeps tests readable as the application grows.
+// 2. Inject into fixtures
+// src/fixtures/index.ts
+export type AppFixtures = {
+  loginPage: LoginPage;
+  checkoutPage: CheckoutPage;
+};
+
+// 3. Write test using fixture
+// tests/checkout.spec.ts
+test('complete purchase', async ({ authenticatedInventoryPage, checkoutPage }) => {
+  await test.step('add to cart', async () => {
+    await authenticatedInventoryPage.addProductToCart('Backpack');
+  });
+  
+  await test.step('proceed to checkout', async () => {
+    await authenticatedInventoryPage.proceedToCheckout();
+  });
+  
+  await test.step('fill shipping', async () => {
+    await checkoutPage.fillShippingAddress('123 Main St');
+  });
+});
+```
+
+### Best Practices
+
+- **Pages contain locators and actions; tests contain assertions and narrative**
+- **Use `test.step()` to organize test flow** for better Allure reports
+- **Store test data in `src/data/` instead of hardcoding in tests**
+- **Reuse fixtures for authenticated flows** rather than repeating login steps
+- **Tag tests** with `@smoke`, `@ui`, `@regression` for selective execution
+
+## Playwright MCP Agents
+
+This workspace includes AI-powered VS Code agents under `.github/agents`:
+
+- **Playwright Planner** — Analyzes requirements and existing framework patterns, creates a coverage plan
+- **Playwright Generator** — Implements approved plans using fixtures, page objects, and test data
+- **Playwright Healer** — Diagnoses failures from Playwright/Allure artifacts, proposes fixes
+
+Reusable prompts in `.github/prompts`:
+
+- `/Analyze Ticket` — Parse ADO/Jira ticket, create test plan
+- `/Generate Tests` — Implement acceptance criteria using existing patterns
+- `/Heal Failure` — Diagnose and fix failing tests with evidence
+
+**Recommended workflow**: Plan → Generate → Heal → Review before merge.
+
+## Stack
+
+- **Language**: TypeScript (97.9%) + JavaScript (2.1%)
+- **Framework**: Playwright Test (v1.62+)
+- **Reporting**: Allure + Playwright HTML reporter
+- **Code Quality**: ESLint + Prettier
+- **CI/CD**: GitHub Actions
+- **Dev Tools**: VS Code with Playwright MCP agents
+
+## License
+
+ISC
