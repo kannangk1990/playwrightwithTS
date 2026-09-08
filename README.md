@@ -65,4 +65,15 @@ API_BASE_URL=https://your-api.example.com npm run test:api
 3. Add domain data under `src/data` rather than embedding credentials in tests.
 4. Compose the scenario in `tests` with `test.step` and Allure labels.
 
+## Playwright MCP agents
+
+This workspace includes three focused VS Code custom agents under `.github/agents`:
+
+- **Playwright Planner** creates a coverage plan from requirements and existing framework capabilities.
+- **Playwright Generator** implements the approved plan using the existing fixtures, page objects, components, and test data.
+- **Playwright Healer** diagnoses failures from Playwright and Allure artifacts before making evidence-backed repairs.
+
+The Playwright MCP server is registered in `.vscode/mcp.json`. VS Code downloads `@playwright/mcp` on demand through `npx`; it provides browser inspection and interaction tools to the agents, while the repository's own Playwright CLI remains responsible for test execution and reporting.
+
+Recommended flow: run **Playwright Planner**, hand off to **Playwright Generator**, then hand off to **Playwright Healer** after the focused test run. Review generated or healed code before merging it.
 The page classes intentionally keep assertions close to the UI they describe, while the test owns the business narrative. This makes failures local and keeps tests readable as the application grows.
