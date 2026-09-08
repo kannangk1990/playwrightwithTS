@@ -75,5 +75,18 @@ This workspace includes three focused VS Code custom agents under `.github/agent
 
 The Playwright MCP server is registered in `.vscode/mcp.json`. VS Code downloads `@playwright/mcp` on demand through `npx`; it provides browser inspection and interaction tools to the agents, while the repository's own Playwright CLI remains responsible for test execution and reporting.
 
+Reusable prompts are available under `.github/prompts` and can be invoked from
+VS Code Chat:
+
+- `/Analyze Ticket` retrieves an ADO or Jira ticket through MCP when available
+  and creates a plan without editing files.
+- `/Generate Tests` implements an approved plan or supplied acceptance criteria.
+- `/Heal Failure` diagnoses a failing test using its error and available
+  Playwright or Allure artifacts before making a focused repair.
+
+Generator requires approved requirements, and Healer requires a concrete failure
+and evidence. This keeps the Planner -> Generator -> Healer workflow reviewable
+while allowing work to start directly at the appropriate stage.
+
 Recommended flow: run **Playwright Planner**, hand off to **Playwright Generator**, then hand off to **Playwright Healer** after the focused test run. Review generated or healed code before merging it.
 The page classes intentionally keep assertions close to the UI they describe, while the test owns the business narrative. This makes failures local and keeps tests readable as the application grows.
