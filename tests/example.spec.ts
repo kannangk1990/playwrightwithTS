@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../src/fixtures/test';
 
 test('has title', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('https://playwright.dev/');
