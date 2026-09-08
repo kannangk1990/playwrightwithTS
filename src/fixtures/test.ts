@@ -8,7 +8,7 @@ import { InventoryPage } from '../pages/inventory.page';
 import { LoginPage } from '../pages/login.page';
 import { HeaderComponent } from '../components/header.component';
 import { standardUser } from '../data/users';
-import { allure } from 'allure-playwright';
+import * as allure from 'allure-js-commons';
 
 type AppFixtures = {
   apiClient: ApiClient;

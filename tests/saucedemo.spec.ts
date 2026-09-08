@@ -1,4 +1,4 @@
-import { allure } from 'allure-playwright';
+import * as allure from 'allure-js-commons';
 import { test } from '../src/fixtures/test';
 import { checkoutInformation } from '../src/data/checkout';
 

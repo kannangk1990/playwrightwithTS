@@ -69,6 +69,20 @@ The fixture orchestrates: navigate → login → verify readiness → return pag
 
 Each test gets a fresh browser context; no global state.
 
+### Test imports
+
+Application tests must import `test` and `expect` from the shared fixture:
+
+```typescript
+import { test, expect } from '../src/fixtures/test';
+```
+
+This keeps page objects, API clients, authentication flows, and failure
+attachments available through one composition root. `tests/auth.setup.ts` is the
+intentional exception because it creates the authentication state used by the
+fixture-dependent browser projects and therefore imports directly from
+`@playwright/test`.
+
 ## Commands
 
 ```bash
@@ -145,7 +159,7 @@ export class CheckoutPage {
 }
 
 // 2. Inject into fixtures
-// src/fixtures/index.ts
+// src/fixtures/test.ts
 export type AppFixtures = {
   loginPage: LoginPage;
   checkoutPage: CheckoutPage;

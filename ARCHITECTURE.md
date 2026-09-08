@@ -158,6 +158,26 @@ test('add to cart', async ({ authenticatedInventoryPage }) => {
 - Setup logic is reusable across tests
 - If setup changes, update the fixture once
 
+### Test Import Boundary
+
+The shared composition root is `src/fixtures/test.ts`. Application tests import
+their `test` and `expect` APIs from this module so all tests use the same page
+objects, API client, authentication-aware fixtures, and failure artifact
+handling:
+
+```typescript
+import { test, expect } from '../src/fixtures/test';
+```
+
+The authentication setup test in `tests/auth.setup.ts` is intentionally
+different. It imports directly from `@playwright/test` because its responsibility
+is to create the storage state consumed by the fixture-dependent browser
+projects. The shared fixture must not be used to create that prerequisite state.
+
+The repository does not retain a bulk import-rewrite script. Import paths are
+maintained directly when new test files are created, using the relative path
+from each test file to `src/fixtures/test.ts`.
+
 ---
 
 ## Directory Structure & Responsibilities
@@ -182,7 +202,7 @@ tests/
 └── agents/        VS Code Copilot agents for test generation and healing
 ```
 
-### `src/fixtures/index.ts` — The Composition Root
+### `src/fixtures/test.ts` — The Composition Root
 
 This is where pages and components are instantiated and injected into tests.
 
@@ -525,7 +545,7 @@ export class CheckoutPage {
 }
 ```
 
-2. **Add to fixtures** in `src/fixtures/index.ts`
+2. **Add to fixtures** in `src/fixtures/test.ts`
 
 ```typescript
 export const test = base.extend<AppFixtures>({
