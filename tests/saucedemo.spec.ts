@@ -3,6 +3,23 @@ import { test } from '../src/fixtures/test';
 import { checkoutInformation } from '../src/data/checkout';
 
 test.describe('Sauce Demo shopping journey', { tag: ['@smoke', '@ui'] }, () => {
+  test('standard user can add a backpack to the cart', async ({ authenticatedInventoryPage, cartPage }) => {
+    await allure.epic('E-commerce');
+    await allure.feature('Shopping cart');
+    await allure.story('Add a product to the cart');
+    await allure.severity('normal');
+
+    await test.step('Add the backpack to the cart', async () => {
+      await authenticatedInventoryPage.addProduct('Sauce Labs Backpack');
+      await authenticatedInventoryPage.expectCartCount(1);
+    });
+
+    await test.step('Verify the cart contents', async () => {
+      await authenticatedInventoryPage.openCart();
+      await cartPage.expectProduct('Sauce Labs Backpack');
+    });
+  });
+
   test('user can complete a purchase', async ({ authenticatedInventoryPage, cartPage, checkoutPage }) => {
     await allure.epic('E-commerce');
     await allure.feature('Checkout');
