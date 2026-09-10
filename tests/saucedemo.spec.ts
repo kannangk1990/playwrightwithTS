@@ -3,8 +3,11 @@ import { test } from '../src/fixtures/test';
 import { checkoutInformation } from '../src/data/checkout';
 
 test.describe('Sauce Demo shopping journey', { tag: ['@smoke', '@ui'] }, () => {
-  test('standard user can add a backpack to the cart', async ({ authenticatedInventoryPage, cartPage }) => {
+  test.beforeEach(async () => {
     await allure.epic('E-commerce');
+  });
+
+  test('standard user can add a backpack to the cart', async ({ authenticatedInventoryPage, cartPage }) => {
     await allure.feature('Shopping cart');
     await allure.story('Add a product to the cart');
     await allure.severity('normal');
@@ -21,7 +24,6 @@ test.describe('Sauce Demo shopping journey', { tag: ['@smoke', '@ui'] }, () => {
   });
 
   test('user can complete a purchase', async ({ authenticatedInventoryPage, cartPage, checkoutPage }) => {
-    await allure.epic('E-commerce');
     await allure.feature('Checkout');
     await allure.story('Complete a purchase');
     await allure.severity('critical');
