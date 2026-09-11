@@ -17,6 +17,7 @@ type AppFixtures = {
   inventoryPage: InventoryPage;
   cartPage: CartPage;
   checkoutPage: CheckoutPage;
+  authenticatedPage: Page;
   authenticatedInventoryPage: InventoryPage;
 };
 
@@ -37,11 +38,14 @@ export const test = base.extend<AppFixtures & { _consoleLogs: string[] }>({
   inventoryPage: async ({ page, headerComponent }, use) => use(new InventoryPage(page, headerComponent)),
   cartPage: async ({ page }, use) => use(new CartPage(page)),
   checkoutPage: async ({ page }, use) => use(new CheckoutPage(page)),
-  authenticatedInventoryPage: async ({ page, loginPage, inventoryPage }, use) => {
+  authenticatedPage: async ({ page, loginPage }, use) => {
     await page.goto('/');
     if (await page.getByRole('textbox', { name: 'Username' }).isVisible()) {
       await loginPage.login(standardUser.username, standardUser.password);
     }
+    await use(page);
+  },
+  authenticatedInventoryPage: async ({ authenticatedPage, inventoryPage }, use) => {
     await inventoryPage.expectLoaded();
     await use(inventoryPage);
   },
