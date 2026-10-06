@@ -2,16 +2,17 @@
 
 [![Playwright Tests](https://github.com/kannangk1990/playwrightwithTS/actions/workflows/playwright.yml/badge.svg)](https://github.com/kannangk1990/playwrightwithTS/actions)
 
-A TypeScript Playwright framework for UI and API testing with production-grade patterns: page object modeling, fixture-based dependency injection, cross-browser execution, and automated CI/CD.
+A TypeScript Playwright framework for authenticated SauceDemo UI testing with page and component objects, reusable test data, Allure reporting, and automated CI/CD.
 
-Built against [Sauce Demo](https://www.saucedemo.com/) to demonstrate real-world testing architecture and best practices.
+Built against [SauceDemo](https://www.saucedemo.com/) to demonstrate
+authenticated browser testing with Playwright `storageState`.
 
 ## Quick Start
 
 ```bash
 npm install
-npm test                    # Run all tests (Chromium, Firefox, WebKit)
-npm run test:chromium       # Fast local feedback
+npm test                    # Run SauceDemo UI tests in Chromium
+npm run test:chromium       # Run tests in Chromium
 npm run test:headed         # Watch the browser
 npm run test:debug          # Playwright Inspector
 npm run typecheck           # TypeScript validation
@@ -26,9 +27,9 @@ This framework demonstrates **production-grade patterns**:
 
 - **Page Object Model (POM)**: Encapsulates UI locators and business actions per screen
 - **Component Object Model (COM)**: Reusable widget compositions for repeated UI patterns
-- **Fixture-based Dependency Injection**: Tests request ready-to-use fixtures rather than managing setup
+- **Shared Test Fixture**: Adds failure diagnostics to Allure test results
 - **Environment Configuration**: Credentials and URLs managed externally, not hardcoded
-- **Cross-browser Testing**: Runs on Chromium, Firefox, and WebKit in parallel
+- **Browser Testing**: Runs SauceDemo UI scenarios in Chromium
 - **Authentication State**: Reuses authenticated session across tests via Playwright's `storageState`
 - **Allure Reporting**: Rich visual reports with steps, attachments, and failure diagnostics
 
@@ -36,13 +37,13 @@ This framework demonstrates **production-grade patterns**:
 
 ```
 src/
-  api/        Reusable HTTP client for API testing
   components/ Reusable widget object models (HeaderComponent, etc.)
-  data/       Test identities, fixtures, and environment overrides
-  fixtures/   Composition root: creates and injects page objects
+  data/       Test identities and checkout data
+  fixtures/   Shared Playwright test fixture and failure attachments
   pages/      Page object models for screens (LoginPage, InventoryPage, etc.)
-  
-tests/        Business-readable test scenarios using fixtures
+  config/     Environment configuration
+
+tests/        Auth setup and SauceDemo UI scenarios
 
 .github/
   workflows/  CI/CD pipeline (playwright.yml)
@@ -50,24 +51,18 @@ tests/        Business-readable test scenarios using fixtures
   prompts/    Reusable prompts for test planning and automation
 ```
 
-### Dependency Injection Pattern
+### Authentication and test fixture
 
-Tests request high-level capabilities; fixtures handle composition:
+The setup project signs in once and saves browser storage state. The Chromium
+project loads that state for each UI test:
 
 ```text
 test
-├─ authenticatedInventoryPage (fixture)
-│  ├─ loginPage (via page fixture)
-│  ├─ inventoryPage (via page fixture)
-│  └─ headerComponent (composed inside inventoryPage)
-└─ page (Playwright base fixture)
+├─ setup project logs in and saves playwright/.auth/user.json
+└─ chromium project loads that storage state for each UI test
 ```
 
-A test writes: `test('find product', async ({ authenticatedInventoryPage }) => { ... })`
-
-The fixture orchestrates: navigate → login → verify readiness → return page object.
-
-Each test gets a fresh browser context; no global state.
+Each test gets a fresh browser context; no global browser state is shared.
 
 ### Test imports
 
@@ -77,24 +72,21 @@ Application tests must import `test` and `expect` from the shared fixture:
 import { test, expect } from '../src/fixtures/test';
 ```
 
-This keeps page objects, API clients, authentication flows, and failure
-attachments available through one composition root. `tests/auth.setup.ts` is the
-intentional exception because it creates the authentication state used by the
-fixture-dependent browser projects and therefore imports directly from
-`@playwright/test`.
+This provides failure attachments to Allure for unsuccessful tests.
+`tests/auth.setup.ts` imports directly from `@playwright/test` because it creates
+the saved authentication state required by the browser tests.
 
 ## Commands
 
 ```bash
 # Local Testing
-npm test                  # All browsers, all tests
-npm run test:chromium     # Chromium only (fastest)
+npm test                  # SauceDemo UI tests
+npm run test:chromium     # Chromium only
 npm run test:headed       # Headed mode (see the browser)
 npm run test:debug        # Playwright Inspector (step through)
-npm run test:api          # API smoke tests only
-npm run test:smoke        # @smoke tagged tests
 npm run test:ui           # @ui tagged tests
-npm run test:regression   # @regression tagged tests
+npx playwright test tests/inventory-checkout.spec.ts --project=chromium
+                           # Focused sort, cart, and checkout scenario
 
 # Code Quality
 npm run typecheck         # TypeScript validation
@@ -107,22 +99,32 @@ npm run report:html       # Open Playwright HTML report
 npm run report:allure     # Build and open Allure report
 ```
 
+Allure results are written to `allure-results`. To report only the latest run,
+remove old results before running tests:
+
+```bash
+rm -rf allure-results
+npx playwright test --project=chromium
+npm run report:allure
+```
+
 ## Environment Configuration
 
 Override test environment without changing code:
 
 ```bash
-# Run against different URL/credentials
-BASE_URL=https://staging.example.com \
+# SauceDemo UI testing
+BASE_URL=https://www.saucedemo.com \
 SAUCE_USERNAME=standard_user \
 SAUCE_PASSWORD=secret_sauce \
-npm run test:chromium
-
-# API testing
-API_BASE_URL=https://api.example.com npm run test:api
+npm test
 ```
 
 See `.env.example` for available variables.
+
+The authentication setup logs into SauceDemo and saves
+`playwright/.auth/user.json`. The Chromium project loads that file as
+`storageState`, so each UI test starts with the authenticated session.
 
 ## CI/CD Pipeline
 
@@ -134,7 +136,7 @@ Tests run automatically on every push and pull request via GitHub Actions:
   1. Install dependencies (`npm ci`)
   2. Install Playwright browsers
   3. Run TypeScript type checking
-  4. Execute all tests in parallel
+  4. Execute the configured Playwright tests
   5. Generate Allure report
   6. Upload artifacts (test results, videos, traces) for 30 days
   7. Generate Playwright HTML report
@@ -148,47 +150,19 @@ See `.github/workflows/playwright.yml` for full configuration.
 ### Adding a New Test
 
 ```typescript
-// 1. Create page object for new screen
-// src/pages/CheckoutPage.ts
-export class CheckoutPage {
-  constructor(private page: Page) {}
-  
-  async fillShippingAddress(address: string) {
-    await this.page.locator('[data-test="shipping-address"]').fill(address);
-  }
-}
+import { expect, test } from '../src/fixtures/test';
 
-// 2. Inject into fixtures
-// src/fixtures/test.ts
-export type AppFixtures = {
-  loginPage: LoginPage;
-  checkoutPage: CheckoutPage;
-};
-
-// 3. Write test using fixture
-// tests/checkout.spec.ts
-test('complete purchase', async ({ authenticatedInventoryPage, checkoutPage }) => {
-  await test.step('add to cart', async () => {
-    await authenticatedInventoryPage.addProductToCart('Backpack');
-  });
-  
-  await test.step('proceed to checkout', async () => {
-    await authenticatedInventoryPage.proceedToCheckout();
-  });
-  
-  await test.step('fill shipping', async () => {
-    await checkoutPage.fillShippingAddress('123 Main St');
-  });
+test('opens the authenticated inventory', { tag: '@ui' }, async ({ page }) => {
+  await page.goto('/inventory.html');
+  await expect(page.getByText('Products', { exact: true })).toBeVisible();
 });
 ```
 
 ### Best Practices
 
-- **Pages contain locators and actions; tests contain assertions and narrative**
+- **Tests contain assertions and business-readable scenarios**
 - **Use `test.step()` to organize test flow** for better Allure reports
-- **Store test data in `src/data/` instead of hardcoding in tests**
-- **Reuse fixtures for authenticated flows** rather than repeating login steps
-- **Tag tests** with `@smoke`, `@ui`, `@regression` for selective execution
+- **Tag UI tests** with `@ui` or `@smoke` for selective execution
 
 ## Playwright MCP Agents
 

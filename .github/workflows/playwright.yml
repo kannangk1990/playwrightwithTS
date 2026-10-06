@@ -21,6 +21,7 @@ jobs:
         run: npm run typecheck
       - name: Run Playwright tests
         run: npx playwright test
+
       - name: Generate Allure report
         if: ${{ !cancelled() }}
         run: npx allure generate allure-results --clean -o allure-report

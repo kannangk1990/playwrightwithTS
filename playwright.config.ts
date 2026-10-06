@@ -46,48 +46,18 @@ export default defineConfig({
   projects: [
     {
       name: 'setup',
-      testMatch: /auth\.setup\.ts/,
+      testMatch: '**/auth.setup.ts',
     },
     {
       name: 'chromium',
+      testMatch: '**/*.spec.ts',
       dependencies: ['setup'],
-      testIgnore: /auth\.setup\.ts/,
-      use: { ...devices['Desktop Chrome'], storageState: path.join(__dirname, 'playwright/.auth/user.json') },
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: environment.baseUrl,
+        storageState: path.join(__dirname, 'playwright/.auth/user.json'),
+      },
     },
-
-    {
-      name: 'firefox',
-      dependencies: ['setup'],
-      testIgnore: /auth\.setup\.ts/,
-      use: { ...devices['Desktop Firefox'], storageState: path.join(__dirname, 'playwright/.auth/user.json') },
-    },
-
-    {
-      name: 'webkit',
-      dependencies: ['setup'],
-      testIgnore: /auth\.setup\.ts/,
-      use: { ...devices['Desktop Safari'], storageState: path.join(__dirname, 'playwright/.auth/user.json') },
-    },
-
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    // },
   ],
 
   /* Run your local dev server before starting the tests */
