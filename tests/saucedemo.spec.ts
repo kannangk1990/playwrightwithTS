@@ -52,13 +52,20 @@ test.describe('Sauce Demo shopping journey', { tag: ['@smoke', '@ui'] }, () => {
 });
 
 test.describe('Authentication', { tag: ['@ui', '@regression'] }, () => {
-  test.use({ storageState: { cookies: [], origins: [] } });
-
-  test('blocked user sees a login error', async ({ loginPage }) => {
+  test('blocked user sees a login error', async ({ page, loginPage }) => {
     await allure.feature('Authentication');
     await allure.story('Reject a locked account');
-    await loginPage.open();
-    await loginPage.login('locked_out_user', 'secret_sauce');
-    await loginPage.expectLoginError(/locked out/i);
+    
+    await test.step('Navigate to login page', async () => {
+      await page.goto('/');
+    });
+
+    await test.step('Attempt login with locked account', async () => {
+      await loginPage.login('locked_out_user', 'secret_sauce');
+    });
+
+    await test.step('Verify login error message', async () => {
+      await loginPage.expectLoginError(/locked out/i);
+    });
   });
 });
