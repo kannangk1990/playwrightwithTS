@@ -45,38 +45,52 @@ export const test = base.extend<AppFixtures & { _consoleLogs: string[] }>({
     await page.goto('/');
 
     let isReauthenticating = false;
+    let reauthenticatePromise: Promise<void> | null = null;
 
     const reauthenticate = async () => {
       if (isReauthenticating) {
-        return;
+        return reauthenticatePromise;
       }
 
       isReauthenticating = true;
 
-      try {
-        await page.goto('/');
-        await loginPage.login(standardUser.username, standardUser.password);
-        await page.context().storageState({ path: authFile });
-      } catch (error) {
-        console.error('Failed to re-authenticate session:', error);
-      } finally {
-        isReauthenticating = false;
-      }
+      reauthenticatePromise = (async () => {
+        try {
+          console.log('Session expired. Attempting to re-authenticate...');
+          await page.goto('/');
+          await loginPage.login(standardUser.username, standardUser.password);
+          await page.context().storageState({ path: authFile });
+          console.log('Session re-authentication completed successfully.');
+        } catch (error) {
+          console.error('Failed to re-authenticate session:', error);
+        } finally {
+          isReauthenticating = false;
+        }
+      })();
+
+      return reauthenticatePromise;
     };
 
-    page.on('response', async (response) => {
+    // Handle 401 Unauthorized responses (API-style session expiry)
+    page.on('response', (response) => {
       if (response.status() === 401) {
-        await reauthenticate();
+        reauthenticate().catch((error) => {
+          console.error('Error in 401 response handler:', error);
+        });
       }
     });
 
-    page.on('framenavigated', async () => {
+    // Handle redirects to login page (Traditional web app session expiry)
+    page.on('framenavigated', () => {
       const url = page.url();
       if ((url.includes('/login') || url.includes('/auth')) && !isReauthenticating) {
-        await reauthenticate();
+        reauthenticate().catch((error) => {
+          console.error('Error in framenavigated handler:', error);
+        });
       }
     });
 
+    // Check if already on login page after initial navigation
     if (page.url().includes('/login') || page.url().includes('/auth')) {
       await reauthenticate();
     }
