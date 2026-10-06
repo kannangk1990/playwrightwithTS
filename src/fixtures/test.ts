@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'node:path';
 import { test as base, expect, Page, TestInfo } from '@playwright/test';
 import { ApiClient } from '../api/api.client';
 import { environment } from '../config/env';
@@ -21,6 +22,8 @@ type AppFixtures = {
   authenticatedInventoryPage: InventoryPage;
 };
 
+const authFile = path.join(__dirname, '../../playwright/.auth/user.json');
+
 // Extend AppFixtures with internal console log collector
 export const test = base.extend<AppFixtures & { _consoleLogs: string[] }>({
   apiClient: async ({ playwright }, use) => {
@@ -40,9 +43,44 @@ export const test = base.extend<AppFixtures & { _consoleLogs: string[] }>({
   checkoutPage: async ({ page }, use) => use(new CheckoutPage(page)),
   authenticatedPage: async ({ page, loginPage }, use) => {
     await page.goto('/');
-    if (await page.getByRole('textbox', { name: 'Username' }).isVisible()) {
-      await loginPage.login(standardUser.username, standardUser.password);
+
+    let isReauthenticating = false;
+
+    const reauthenticate = async () => {
+      if (isReauthenticating) {
+        return;
+      }
+
+      isReauthenticating = true;
+
+      try {
+        await page.goto('/');
+        await loginPage.login(standardUser.username, standardUser.password);
+        await page.context().storageState({ path: authFile });
+      } catch (error) {
+        console.error('Failed to re-authenticate session:', error);
+      } finally {
+        isReauthenticating = false;
+      }
+    };
+
+    page.on('response', async (response) => {
+      if (response.status() === 401) {
+        await reauthenticate();
+      }
+    });
+
+    page.on('framenavigated', async () => {
+      const url = page.url();
+      if ((url.includes('/login') || url.includes('/auth')) && !isReauthenticating) {
+        await reauthenticate();
+      }
+    });
+
+    if (page.url().includes('/login') || page.url().includes('/auth')) {
+      await reauthenticate();
     }
+
     await use(page);
   },
   authenticatedInventoryPage: async ({ authenticatedPage, inventoryPage }, use) => {
